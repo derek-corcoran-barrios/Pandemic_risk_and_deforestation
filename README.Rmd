@@ -1,0 +1,93 @@
+---
+output:
+  bookdown::github_document2:
+    fig_caption: true
+    toc: true
+bibliography: https://api.citedrive.com/bib/1306e547-b1d9-497f-a7c1-120c6d3d6ad7/references.bib?x=eyJpZCI6ICIxMzA2ZTU0Ny1iMWQ5LTQ5N2YtYTdjMS0xMjBjNmQzZDZhZDciLCAidXNlciI6ICI4NjQ0IiwgInNpZ25hdHVyZSI6ICJmMjFmNGMwNjZhOWYxN2I0YmRlZTdjNWU2ZmY1N2Y5OTA1MGRjNTlmZGIwN2ZlMzFiNTc2YzY0ZjI1MzBlYzA3In0=/bibliography.bib
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  error = FALSE
+)
+```
+
+# Pandemic_risk_and_deforestation
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of the *Pandemic_risk_and_deforestation* is to document the code and datasets used for the mansucript *Pandemic risk and deforestation policies in the world tropics* this repo goes section by section with the code
+
+## load necessary packages:
+
+first we load the necessary packages
+
+```{r loadpackages}
+library(terra)
+library(dplyr)
+library(broom)
+```
+
+
+## Mammal species richness, abundance and number of infected individuals 
+
+We used IUCN range maps for mammalian species in the Orders Chiroptera, Primate, Rodentia and Ungulata gathered from the IUCN red list (https://www.iucnredlist.org/resources/spatial-data-download) in raster format to calculate species richness ($S$) for each order within each cell. To transform number of species into number of individuals, we used models fitted to empirical data obtained from a world database of species richness and abundance in local communities throughout the world (The Ecological Register [@alroy2015shape].
+
+```{r AlroyData}
+Data <- readRDS("Alroy_Data.rds") |>  
+    dplyr::filter(Goods_U > 0.9, count > 100) |>  
+    dplyr::mutate(LogS = log(Richness), LogA = log(Fishers_Alpha))
+```
+
+From these relationships (for values of Goods_U > 0.9 and counts of more of a 100), we then calculated the expected abundance for each cell $S$
+
+```{r NLSModel}
+powerlaw.model <- nls(Fishers_Alpha~a*Richness^y, start= list(y=0, a = 1), data =Data)
+```
+
+see results in table \@ref(tab:tableNLS)
+
+```{r tableNLS, echo = FALSE}
+knitr::kable(broom::tidy(powerlaw.model), caption = "Parameters from the non linear model for the power law of fishers alpha", digits = 3)
+```
+
+
+# Used Packages and Versions
+
+```{r echo=FALSE}
+# Load knitr package
+library(knitr)
+
+# Get loaded packages information
+loaded_packages <- sessionInfo()$otherPkgs
+
+# Extract package names and versions
+package_info <- data.frame(
+  Package = names(loaded_packages),
+  Version = sapply(loaded_packages, function(x) x$Version),
+  stringsAsFactors = FALSE
+)
+
+# Remove base and recommended packages
+package_info <- package_info[!(package_info$Package %in% c("base", "recommended")), ]
+```
+
+
+```{r list, results='asis', echo = F}
+# Print package information in Markdown format
+cat(paste0("* **", package_info$Package, "**: ", package_info$Version, "\n"))
+```
+
+
+In this code, `sessionInfo()$otherPkgs` is used to extract the loaded packages during the rendering of the R Markdown document. We then extract the package names and versions from this information and format it into a Markdown list, excluding base and recommended packages.
+
+
+
+# References
