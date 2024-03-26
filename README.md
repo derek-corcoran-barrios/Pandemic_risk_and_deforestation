@@ -9,6 +9,8 @@
     id="toc-12-mammal-species-richness-abundance-and-number-of-infected-individuals">1.2
     Mammal species richness, abundance and number of infected
     individuals</a>
+  - <a href="#13-population-density" id="toc-13-population-density">1.3
+    Population density</a>
 - <a href="#2-used-packages-and-versions"
   id="toc-2-used-packages-and-versions">2 Used Packages and Versions</a>
 - <a href="#3-references" id="toc-3-references">3 References</a>
@@ -33,6 +35,10 @@ first we load the necessary packages
 library(terra)
 library(dplyr)
 library(broom)
+library(geodata)
+library(purrr)
+library(tidyterra)
+library(ggplot2)
 ```
 
 ## 1.2 Mammal species richness, abundance and number of infected individuals
@@ -70,9 +76,56 @@ see results in table <a href="#tab:tableNLS">1.1</a>
 <span id="tab:tableNLS"></span>Table 1.1: Parameters from the non linear
 model for the power law of fishers alpha
 
+## 1.3 Population density
+
+We calculated the population density based on (Center for International
+Earth Science Information Network - CIESIN - Columbia University 2018),
+at 2.5 min resolution, and then multiply them by the area to get total
+population, that is then transformed to equal area projection to make it
+consistent
+
+``` r
+population <- seq(2000, 2020, by = 5) |>
+  purrr::map(~geodata::population(year = .x, res = 2.5, path = getwd())) |> 
+  purrr::reduce(c)
+
+# Multiply by area
+
+population <- population*terra::cellSize(population[[1]], unit = "km")
+
+# Transform to equal area
+
+population <- terra::project(population, "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs")
+
+names(population) <- paste0("Year", seq(2000, 2020, by = 5))
+
+# save to cloud optimized geotif
+terra::writeRaster(x = population, filename = "Population.tif", overwrite = TRUE, gdal = c("COMPRESS=DEFLATE", "TFW=YES", "of=COG"))
+```
+
+This looks like this in the log scale in figure
+<a href="#fig:ShowPopulation">1.1</a>
+
+<div class="figure">
+
+<img src="README_files/figure-gfm/ShowPopulation-1.png" alt="Population by pixel in the world"  />
+
+<p class="caption">
+
+<span id="fig:ShowPopulation"></span>Figure 1.1: Population by pixel in
+the world
+
+</p>
+
+</div>
+
 # 2 Used Packages and Versions
 
 - **knitr**: 1.45
+- **ggplot2**: 3.4.4
+- **tidyterra**: 0.4.0
+- **purrr**: 1.0.2
+- **geodata**: 0.5-8
 - **broom**: 1.0.5
 - **dplyr**: 1.1.4
 - **terra**: 1.7-73
@@ -90,6 +143,16 @@ it into a Markdown list, excluding base and recommended packages.
 
 Alroy, John. 2015. “The Shape of Terrestrial Abundance Distributions.”
 *Science Advances* 1 (8): e1500082.
+
+</div>
+
+<div id="ref-ciesin2018" class="csl-entry">
+
+Center for International Earth Science Information Network - CIESIN -
+Columbia University. 2018. “Gridded Population of the World, Version 4
+(GPWv4): Population Density, Revision 11.” Palisades, NY: NASA
+Socioeconomic Data and Applications Center (SEDAC).
+<https://doi.org/10.7927/H49C6VHW>.
 
 </div>
 

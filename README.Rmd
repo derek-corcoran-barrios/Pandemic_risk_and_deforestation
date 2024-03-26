@@ -33,6 +33,10 @@ first we load the necessary packages
 library(terra)
 library(dplyr)
 library(broom)
+library(geodata)
+library(purrr)
+library(tidyterra)
+library(ggplot2)
 ```
 
 
@@ -56,6 +60,60 @@ see results in table \@ref(tab:tableNLS)
 
 ```{r tableNLS, echo = FALSE}
 knitr::kable(broom::tidy(powerlaw.model), caption = "Parameters from the non linear model for the power law of fishers alpha", digits = 3)
+```
+
+## Population density
+
+We calculated the population density based on [@ciesin2018], at 2.5 min resolution, and then multiply them by the area to get total population, that is then transformed to equal area projection to make it consistent
+
+```{r density, cache=TRUE, include=FALSE}
+population <- seq(2000, 2020, by = 5) |>
+  purrr::map(~geodata::population(year = .x, res = 2.5, path = getwd())) |> 
+  purrr::reduce(c)
+
+# Multiply by area
+
+population <- population*terra::cellSize(population[[1]], unit = "km")
+
+# Transform to equal area
+
+population <- terra::project(population, "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs")
+
+names(population) <- paste0("Year", seq(2000, 2020, by = 5))
+
+# save to cloud optimized geotif
+terra::writeRaster(x = population, filename = "Population.tif", overwrite = TRUE, gdal = c("COMPRESS=DEFLATE", "TFW=YES", "of=COG"))
+```
+
+```{r densityshow, eval=FALSE}
+population <- seq(2000, 2020, by = 5) |>
+  purrr::map(~geodata::population(year = .x, res = 2.5, path = getwd())) |> 
+  purrr::reduce(c)
+
+# Multiply by area
+
+population <- population*terra::cellSize(population[[1]], unit = "km")
+
+# Transform to equal area
+
+population <- terra::project(population, "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs")
+
+names(population) <- paste0("Year", seq(2000, 2020, by = 5))
+
+# save to cloud optimized geotif
+terra::writeRaster(x = population, filename = "Population.tif", overwrite = TRUE, gdal = c("COMPRESS=DEFLATE", "TFW=YES", "of=COG"))
+```
+
+This looks like this in the log scale in figure \@ref(fig:ShowPopulation)
+
+```{r ShowPopulation, cache=TRUE, fig.cap= "Population by pixel in the world", echo=FALSE}
+population <- terra::rast("Population.tif")
+
+ggplot() + 
+  geom_spatraster(data = population) + 
+  facet_wrap(~lyr) +
+  scale_fill_wiki_c(trans = "log", labels = scales::comma) +
+  theme_bw() 
 ```
 
 
@@ -87,7 +145,6 @@ cat(paste0("* **", package_info$Package, "**: ", package_info$Version, "\n"))
 
 
 In this code, `sessionInfo()$otherPkgs` is used to extract the loaded packages during the rendering of the R Markdown document. We then extract the package names and versions from this information and format it into a Markdown list, excluding base and recommended packages.
-
 
 
 # References

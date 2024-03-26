@@ -3,3 +3,7 @@
 .Rdata
 .httr-oauth
 .DS_Store
+pop
+README_cache
+Population.tif
+Population.tfw
